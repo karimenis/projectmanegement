@@ -39,7 +39,9 @@ export default function ProjectSidebar({
   }, []);
   
   // Find current user (for demo purposes)
-  const currentUser = users.find(user => user.id === 1);
+  const currentUser = Array.isArray(users) && users.length > 0 
+    ? users.find(user => user.id === 1) 
+    : null;
   
   return (
     <>

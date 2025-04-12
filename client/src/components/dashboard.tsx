@@ -18,62 +18,61 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [chartData, setChartData] = useState<ProjectChartData[]>([]);
 
   useEffect(() => {
-    const fetchProjects = () => {
-      const allProjects = storage.getProjects();
-      setProjects(allProjects);
-      
-      // Calculate dashboard stats
-      let totalTasks = 0;
-      let completedTasks = 0;
-      
-      allProjects.forEach(project => {
-        if (project.tasks) {
-          totalTasks += project.tasks.length;
-          completedTasks += project.tasks.filter(task => task.etat === 'réalisé').length;
-        }
-      });
-      
-      setStats({
-        activeProjects: allProjects.length,
-        totalTasks,
-        completedTasks
-      });
-      
-      // Prepare chart data
-      const charData = allProjects.map(project => {
-        const totalEstimated = project.estimation_jours * 8;
-        const totalActual = project.tasks
-          ? project.tasks.reduce((sum, task) => sum + (task.heures_realisees || 0), 0)
-          : 0;
+    const fetchProjects = async () => {
+      try {
+        const allProjects = await storage.getProjects();
+        setProjects(allProjects);
         
-        return {
-          name: project.nom,
-          estimated: totalEstimated,
-          actual: totalActual
-        };
-      });
-      
-      setChartData(charData);
+        // Calculate dashboard stats
+        let totalTasks = 0;
+        let completedTasks = 0;
+        
+        allProjects.forEach(project => {
+          if (project.tasks) {
+            totalTasks += project.tasks.length;
+            completedTasks += project.tasks.filter(task => task.etat === 'réalisé').length;
+          }
+        });
+        
+        setStats({
+          activeProjects: allProjects.length,
+          totalTasks,
+          completedTasks
+        });
+        
+        // Prepare chart data
+        const chartData = allProjects.map(project => {
+          const totalEstimated = project.estimation_jours * 8; // Using the correct field name
+          const totalActual = project.tasks
+            ? project.tasks.reduce((sum, task) => sum + (task.heures_realisees || 0), 0)
+            : 0;
+          
+          return {
+            name: project.nom, // Using the correct field name
+            estimated: totalEstimated,
+            actual: totalActual
+          };
+        });
+        
+        setChartData(chartData);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
     };
     
     fetchProjects();
     
-    // Set up listener for localStorage changes
-    const handleStorage = () => {
-      fetchProjects();
-    };
-    
-    window.addEventListener('storage', handleStorage);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
+    // No need for localStorage listener with database
   }, []);
 
-  const handleDeleteProject = (projectId: number) => {
+  const handleDeleteProject = async (projectId: number) => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer ce projet ?`)) {
-      storage.deleteProject(projectId);
-      setProjects(projects.filter(project => project.id !== projectId));
+      try {
+        await storage.deleteProject(projectId);
+        setProjects(projects.filter(project => project.id !== projectId));
+      } catch (error) {
+        console.error("Error deleting project:", error);
+      }
     }
   };
 

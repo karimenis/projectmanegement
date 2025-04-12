@@ -1,16 +1,50 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Dashboard from "@/components/dashboard";
 import ProjectDetail from "@/components/project-detail";
 import ProjectSidebar from "@/components/project-sidebar";
 import { storage } from "@/lib/storage";
 import { NewProjectDialog } from "@/components/modals/new-project-dialog";
-import { User } from "@/types";
+import { User, Project } from "@/types";
 
 export default function Home() {
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
-  const users = storage.getUsers();
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  
+  // Load users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersData = await storage.getUsers();
+        setUsers(usersData);
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    };
+    
+    fetchUsers();
+  }, []);
+  
+  // Load current project when ID changes
+  useEffect(() => {
+    const fetchCurrentProject = async () => {
+      if (currentProjectId) {
+        try {
+          const project = await storage.getProject(currentProjectId);
+          setCurrentProject(project || null);
+        } catch (error) {
+          console.error("Error loading current project:", error);
+          setCurrentProject(null);
+        }
+      } else {
+        setCurrentProject(null);
+      }
+    };
+    
+    fetchCurrentProject();
+  }, [currentProjectId]);
   
   const handleSelectProject = (projectId: number) => {
     setCurrentProjectId(projectId);
@@ -21,13 +55,17 @@ export default function Home() {
     setCurrentProjectId(null);
   };
   
-  const handleCreateProject = (projectName: string, estimationDays: number, selectedUsers: number[]) => {
-    storage.createProject({
-      nom: projectName,
-      estimation_jours: estimationDays,
-      utilisateurs: selectedUsers
-    });
-    setNewProjectDialogOpen(false);
+  const handleCreateProject = async (projectName: string, estimationDays: number, selectedUsers: number[]) => {
+    try {
+      await storage.createProject({
+        nom: projectName,
+        estimation_jours: estimationDays,
+        utilisateurs: selectedUsers
+      });
+      setNewProjectDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating project:", error);
+    }
   };
   
   return (
@@ -82,7 +120,7 @@ export default function Home() {
               onClick={handleBackToDashboard}
             >
               {currentProjectId 
-                ? storage.getProject(currentProjectId)?.nom || "Projet"
+                ? (currentProject?.nom || "Projet")
                 : "Tableau de bord"
               }
             </h2>
