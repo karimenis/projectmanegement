@@ -11,3 +11,31 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@layer components {
+  .spreadsheet-container {
+    @apply w-full h-full;
+  }
+  
+  .spreadsheet-cell {
+    @apply p-2 whitespace-nowrap overflow-hidden text-ellipsis relative;
+  }
+  
+  .cell-content {
+    @apply flex items-center h-full min-h-[1.5rem];
+  }
+  
+  .cell-editable {
+    @apply cursor-text;
+  }
+  
+  .cell-editable:hover {
+    @apply bg-gray-100;
+  }
+  
+  /* Add a styling indicator for cells that can be edited inline */
+  tr:hover .cell-editable::after {
+    content: "";
+    @apply absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-primary opacity-50;
+  }
+}

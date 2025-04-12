@@ -297,63 +297,170 @@ export default function TasksTable({ projectId }: TasksTableProps) {
                 </td>
               </tr>
             ) : (
-              project.tasks.map(task => (
-                <tr key={task.id} className="border-b border-surface-300 hover:bg-surface-200">
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{formatDate(task.date)}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{task.tache}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{getUserName(task.responsable)}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        task.priorite === 'basse' 
-                          ? 'bg-blue-100 text-blue-800'
-                          : task.priorite === 'moyenne'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-red-100 text-red-800'
-                      }`}>
-                        {task.priorite.charAt(0).toUpperCase() + task.priorite.slice(1)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm text-right">
-                    <div className="cell-content justify-end">{task.heures_estimees}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm text-right">
-                    <div className="cell-content justify-end">{task.heures_realisees || 0}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        task.etat === 'réalisé' 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {task.etat.charAt(0).toUpperCase() + task.etat.slice(1)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 text-sm">
-                    <button 
-                      className="text-primary hover:text-primary/80"
-                      onClick={() => handleEditTask(task.id)}
-                    >
-                      <EditIcon className="h-4 w-4" />
-                    </button>
-                    <button 
-                      className="text-red-500 hover:text-red-600 ml-2"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              project.tasks.map(task => 
+                inlineEditingId === task.id ? (
+                  // Editing mode row
+                  <tr 
+                    key={task.id} 
+                    className="border-b border-surface-300 bg-surface-200"
+                    ref={editRowRef}
+                  >
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <div className="cell-content">{formatDate(task.date)}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Input
+                        value={editedTaskName}
+                        onChange={(e) => setEditedTaskName(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Select value={editedResponsible} onValueChange={setEditedResponsible}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="null">Aucun responsable</SelectItem>
+                          {users.map(user => (
+                            <SelectItem key={user.id} value={String(user.id)}>
+                              {user.name} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Select 
+                        value={editedPriority} 
+                        onValueChange={(val) => setEditedPriority(val as 'basse' | 'moyenne' | 'haute')}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basse">Basse</SelectItem>
+                          <SelectItem value="moyenne">Moyenne</SelectItem>
+                          <SelectItem value="haute">Haute</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={editedEstimatedHours}
+                        onChange={(e) => setEditedEstimatedHours(e.target.value)}
+                        className="h-8 text-sm text-right"
+                      />
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={editedActualHours}
+                        onChange={(e) => setEditedActualHours(e.target.value)}
+                        className="h-8 text-sm text-right"
+                      />
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Select 
+                        value={editedStatus} 
+                        onValueChange={(val) => setEditedStatus(val as 'réalisé' | 'non réalisé')}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="non réalisé">Non réalisé</SelectItem>
+                          <SelectItem value="réalisé">Réalisé</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-1 py-1 text-sm">
+                      <button 
+                        className="text-green-500 hover:text-green-600"
+                        onClick={saveInlineEdit}
+                        title="Enregistrer"
+                      >
+                        <CheckIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="text-red-500 hover:text-red-600 ml-2"
+                        onClick={cancelInlineEdit}
+                        title="Annuler"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  // Normal display row
+                  <tr 
+                    key={task.id} 
+                    className="border-b border-surface-300 hover:bg-surface-200"
+                    onDoubleClick={() => startInlineEdit(task)}
+                  >
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm">
+                      <div className="cell-content">{formatDate(task.date)}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content">{task.tache}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content">{getUserName(task.responsable)}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          task.priorite === 'basse' 
+                            ? 'bg-blue-100 text-blue-800'
+                            : task.priorite === 'moyenne'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-red-100 text-red-800'
+                        }`}>
+                          {task.priorite.charAt(0).toUpperCase() + task.priorite.slice(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm text-right cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content justify-end">{task.heures_estimees}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm text-right cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content justify-end">{task.heures_realisees || 0}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(task)}>
+                      <div className="cell-content">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          task.etat === 'réalisé' 
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {task.etat.charAt(0).toUpperCase() + task.etat.slice(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 text-sm">
+                      <button 
+                        className="text-primary hover:text-primary/80"
+                        onClick={() => startInlineEdit(task)}
+                        title="Éditer en ligne"
+                      >
+                        <EditIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="text-red-500 hover:text-red-600 ml-2"
+                        onClick={() => handleDeleteTask(task.id)}
+                        title="Supprimer"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
             )}
           </tbody>
           <tfoot>

@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { storage, formatDate } from "@/lib/storage";
-import { Project, Task } from "@/types";
+import { Project, Task, BugNote } from "@/types";
 import { BugNoteDialog } from "@/components/modals/bug-note-dialog";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, EditIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface BugsNotesTableProps {
   projectId: number;
@@ -15,6 +18,15 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
   const [isBugNoteDialogOpen, setIsBugNoteDialogOpen] = useState(false);
   const [editingBugNoteId, setEditingBugNoteId] = useState<number | null>(null);
   const { toast } = useToast();
+  
+  // Inline editing states
+  const [inlineEditingId, setInlineEditingId] = useState<number | null>(null);
+  const [editedType, setEditedType] = useState<'bug' | 'note'>('bug');
+  const [editedContent, setEditedContent] = useState<string>('');
+  const [editedTaskId, setEditedTaskId] = useState<string>('null');
+  
+  // Refs for handling click outside
+  const editRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
     const fetchData = () => {
@@ -126,6 +138,82 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
     setEditingBugNoteId(bugNoteId);
     setIsBugNoteDialogOpen(true);
   };
+  
+  // Start inline editing of a bug/note
+  const startInlineEdit = (bugNote: BugNote) => {
+    setInlineEditingId(bugNote.id);
+    setEditedType(bugNote.type);
+    setEditedContent(bugNote.contenu);
+    setEditedTaskId(bugNote.tache_id ? String(bugNote.tache_id) : 'null');
+  };
+  
+  // Cancel inline editing
+  const cancelInlineEdit = () => {
+    setInlineEditingId(null);
+  };
+  
+  // Save inline edited bug/note
+  const saveInlineEdit = () => {
+    if (!inlineEditingId) return;
+    
+    // Validate fields
+    if (!editedContent.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Le contenu ne peut pas être vide",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const updatedBugNote = {
+      type: editedType,
+      contenu: editedContent,
+      tache_id: editedTaskId === 'null' ? null : Number(editedTaskId)
+    };
+    
+    try {
+      storage.updateBugNote(projectId, inlineEditingId, updatedBugNote);
+      
+      // Refresh data
+      const updatedProject = storage.getProject(projectId);
+      if (updatedProject) {
+        setProject(updatedProject);
+      }
+      
+      toast({
+        title: `${editedType === 'bug' ? 'Bug' : 'Note'} mis à jour`,
+        description: `Le ${editedType === 'bug' ? 'bug' : 'la note'} a été modifié(e) avec succès.`,
+      });
+      
+      setInlineEditingId(null);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: `Impossible de mettre à jour le ${editedType === 'bug' ? 'bug' : 'la note'}.`,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // For handling clicks outside the editing row
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        inlineEditingId && 
+        editRowRef.current && 
+        !editRowRef.current.contains(event.target as Node)
+      ) {
+        cancelInlineEdit();
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [inlineEditingId]);
 
   if (!project) {
     return (
@@ -167,44 +255,114 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
                 </td>
               </tr>
             ) : (
-              project.bugs_notes.map(bugNote => (
-                <tr key={bugNote.id} className="border-b border-surface-300 hover:bg-surface-200">
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{formatDate(bugNote.date)}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        bugNote.type === 'bug' 
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {bugNote.type.charAt(0).toUpperCase() + bugNote.type.slice(1)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{bugNote.contenu}</div>
-                  </td>
-                  <td className="spreadsheet-cell border-r border-surface-300 text-sm">
-                    <div className="cell-content">{getTaskName(bugNote.tache_id) || '-'}</div>
-                  </td>
-                  <td className="px-2 py-2 text-sm">
-                    <button 
-                      className="text-primary hover:text-primary/80"
-                      onClick={() => handleEditBugNote(bugNote.id)}
-                    >
-                      <EditIcon className="h-4 w-4" />
-                    </button>
-                    <button 
-                      className="text-red-500 hover:text-red-600 ml-2"
-                      onClick={() => handleDeleteBugNote(bugNote.id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              project.bugs_notes.map(bugNote => 
+                inlineEditingId === bugNote.id ? (
+                  // Editing mode row
+                  <tr 
+                    key={bugNote.id} 
+                    className="border-b border-surface-300 bg-surface-200"
+                    ref={editRowRef}
+                  >
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <div className="cell-content">{formatDate(bugNote.date)}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Select value={editedType} onValueChange={(val) => setEditedType(val as 'bug' | 'note')}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bug">Bug</SelectItem>
+                          <SelectItem value="note">Note</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Textarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        className="h-20 text-sm resize-none"
+                        placeholder="Description du bug ou contenu de la note"
+                      />
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
+                      <Select value={editedTaskId} onValueChange={setEditedTaskId}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Aucune tâche" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="null">Aucune tâche</SelectItem>
+                          {project.tasks.map(task => (
+                            <SelectItem key={task.id} value={String(task.id)}>
+                              {task.tache}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-1 py-1 text-sm">
+                      <button 
+                        className="text-green-500 hover:text-green-600"
+                        onClick={saveInlineEdit}
+                        title="Enregistrer"
+                      >
+                        <CheckIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="text-red-500 hover:text-red-600 ml-2"
+                        onClick={cancelInlineEdit}
+                        title="Annuler"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  // Normal display row
+                  <tr 
+                    key={bugNote.id} 
+                    className="border-b border-surface-300 hover:bg-surface-200"
+                    onDoubleClick={() => startInlineEdit(bugNote)}
+                  >
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm">
+                      <div className="cell-content">{formatDate(bugNote.date)}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(bugNote)}>
+                      <div className="cell-content">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          bugNote.type === 'bug' 
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {bugNote.type.charAt(0).toUpperCase() + bugNote.type.slice(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(bugNote)}>
+                      <div className="cell-content">{bugNote.contenu}</div>
+                    </td>
+                    <td className="spreadsheet-cell border-r border-surface-300 text-sm cell-editable" onClick={() => startInlineEdit(bugNote)}>
+                      <div className="cell-content">{getTaskName(bugNote.tache_id) || '-'}</div>
+                    </td>
+                    <td className="px-2 py-2 text-sm">
+                      <button 
+                        className="text-primary hover:text-primary/80"
+                        onClick={() => startInlineEdit(bugNote)}
+                        title="Éditer en ligne"
+                      >
+                        <EditIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="text-red-500 hover:text-red-600 ml-2"
+                        onClick={() => handleDeleteBugNote(bugNote.id)}
+                        title="Supprimer"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
             )}
           </tbody>
           <tfoot>
