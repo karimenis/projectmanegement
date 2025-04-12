@@ -61,7 +61,12 @@ export class DatabaseStorage implements IStorage {
   
   // Project operations
   async getProjects(): Promise<Project[]> {
-    return await db.select().from(projects);
+    const projectsData = await db.select().from(projects);
+    
+    // For each project, add empty tasks and bugs_notes arrays
+    return Promise.all(projectsData.map(async (project) => {
+      return await this.getProject(project.id) as Project;
+    }));
   }
   
   async getProject(id: number): Promise<Project | undefined> {
@@ -73,30 +78,55 @@ export class DatabaseStorage implements IStorage {
     const projectBugsNotes = await this.getBugsNotes(id);
     
     // Create a full project object with related data
-    const project = {
-      ...projectData[0],
+    // We need to add tasks and bugs_notes as custom properties since 
+    // they're not part of the DB schema but are needed for the API
+    return {
+      id: projectData[0].id,
+      name: projectData[0].name,
+      estimation_days: projectData[0].estimation_days,
+      users: projectData[0].users,
+      created_at: projectData[0].created_at,
+      // Custom properties for related data
       tasks: projectTasks,
       bugs_notes: projectBugsNotes
-    };
-    
-    return project;
+    } as unknown as Project;
   }
   
   async createProject(project: InsertProject): Promise<Project> {
-    const result = await db.insert(projects).values(project).returning();
+    // Convert users to an array if it's not already
+    const projectData = {
+      ...project,
+      users: Array.isArray(project.users) ? project.users : []
+    };
+    
+    const result = await db.insert(projects).values(projectData).returning();
     const newProject = result[0];
     
     // Return with empty tasks and bugs_notes
     return {
-      ...newProject,
+      id: newProject.id,
+      name: newProject.name,
+      estimation_days: newProject.estimation_days,
+      users: newProject.users,
+      created_at: newProject.created_at,
+      // Custom properties for related data
       tasks: [],
       bugs_notes: []
-    };
+    } as unknown as Project;
   }
   
   async updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined> {
+    // Handle users array for update
+    let projectData = { ...project };
+    if (project.users) {
+      projectData = {
+        ...projectData,
+        users: Array.isArray(project.users) ? project.users : []
+      };
+    }
+    
     const result = await db.update(projects)
-      .set(project)
+      .set(projectData)
       .where(eq(projects.id, id))
       .returning();
       
