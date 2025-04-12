@@ -276,8 +276,8 @@ export default function TasksTable({ projectId }: TasksTableProps) {
   return (
     <div className="h-full overflow-auto">
       <div className="spreadsheet-container overflow-x-auto">
-        <table className="w-full bg-surface-100 border-collapse">
-          <thead className="bg-surface-200 sticky top-0 z-10">
+        <table className="w-full bg-white border-collapse">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider w-32">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tâche</th>
@@ -302,7 +302,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
                   // Editing mode row
                   <tr 
                     key={task.id} 
-                    className="border-b border-surface-300 bg-surface-200"
+                    className="border-b border-gray-200 bg-gray-100"
                     ref={editRowRef}
                   >
                     <td className="spreadsheet-cell border-r border-surface-300 text-sm p-1">
@@ -400,7 +400,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
                   // Normal display row
                   <tr 
                     key={task.id} 
-                    className="border-b border-surface-300 hover:bg-surface-200"
+                    className="border-b border-gray-200 hover:bg-gray-50"
                     onDoubleClick={() => startInlineEdit(task)}
                   >
                     <td className="spreadsheet-cell border-r border-surface-300 text-sm">
