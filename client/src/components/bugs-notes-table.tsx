@@ -29,41 +29,39 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
   const editRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
-    const fetchData = () => {
-      const projectData = storage.getProject(projectId);
-      if (projectData) {
-        setProject(projectData);
+    const fetchData = async () => {
+      try {
+        const projectData = await storage.getProject(projectId);
+        if (projectData) {
+          setProject(projectData as Project);
+        }
+      } catch (error) {
+        console.error('Error fetching project data:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les données du projet.",
+          variant: "destructive",
+        });
       }
     };
 
     fetchData();
-    
-    // Set up listener for localStorage changes
-    const handleStorage = () => {
-      fetchData();
-    };
-    
-    window.addEventListener('storage', handleStorage);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, [projectId]);
+  }, [projectId, toast]);
 
-  const handleCreateBugNote = (bugNote: {
+  const handleCreateBugNote = async (bugNote: {
     date: string;
     type: 'bug' | 'note';
     contenu: string;
     tache_id: number | null;
   }) => {
     try {
-      storage.createBugNote(projectId, bugNote);
+      await storage.createBugNote(projectId, bugNote);
       setIsBugNoteDialogOpen(false);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -71,6 +69,7 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
         description: `Le ${bugNote.type === 'bug' ? 'bug' : 'la note'} a été ajouté(e) avec succès.`,
       });
     } catch (error) {
+      console.error("Error creating bug/note:", error);
       toast({
         title: "Erreur",
         description: `Impossible de créer le ${bugNote.type === 'bug' ? 'bug' : 'la note'}.`,
@@ -79,21 +78,21 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
     }
   };
 
-  const handleUpdateBugNote = (bugNoteId: number, bugNote: Partial<{
+  const handleUpdateBugNote = async (bugNoteId: number, bugNote: Partial<{
     date: string;
     type: 'bug' | 'note';
     contenu: string;
     tache_id: number | null;
   }>) => {
     try {
-      storage.updateBugNote(projectId, bugNoteId, bugNote);
+      await storage.updateBugNote(projectId, bugNoteId, bugNote);
       setIsBugNoteDialogOpen(false);
       setEditingBugNoteId(null);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -101,6 +100,7 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
         description: `Le ${bugNote.type === 'bug' ? 'bug' : 'la note'} a été modifié(e) avec succès.`,
       });
     } catch (error) {
+      console.error("Error updating bug/note:", error);
       toast({
         title: "Erreur",
         description: `Impossible de mettre à jour le ${bugNote.type === 'bug' ? 'bug' : 'la note'}.`,
@@ -109,15 +109,15 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
     }
   };
 
-  const handleDeleteBugNote = (bugNoteId: number) => {
+  const handleDeleteBugNote = async (bugNoteId: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
       try {
-        storage.deleteBugNote(projectId, bugNoteId);
+        await storage.deleteBugNote(projectId, bugNoteId);
         
         // Refresh data
-        const updatedProject = storage.getProject(projectId);
+        const updatedProject = await storage.getProject(projectId);
         if (updatedProject) {
-          setProject(updatedProject);
+          setProject(updatedProject as Project);
         }
         
         toast({
@@ -125,6 +125,7 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
           description: "L'élément a été supprimé avec succès.",
         });
       } catch (error) {
+        console.error("Error deleting bug/note:", error);
         toast({
           title: "Erreur",
           description: "Impossible de supprimer l'élément.",
@@ -153,7 +154,7 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
   };
   
   // Save inline edited bug/note
-  const saveInlineEdit = () => {
+  const saveInlineEdit = async () => {
     if (!inlineEditingId) return;
     
     // Validate fields
@@ -173,12 +174,12 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
     };
     
     try {
-      storage.updateBugNote(projectId, inlineEditingId, updatedBugNote);
+      await storage.updateBugNote(projectId, inlineEditingId, updatedBugNote);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -188,6 +189,7 @@ export default function BugsNotesTable({ projectId }: BugsNotesTableProps) {
       
       setInlineEditingId(null);
     } catch (error) {
+      console.error("Error updating bug/note inline:", error);
       toast({
         title: "Erreur",
         description: `Impossible de mettre à jour le ${editedType === 'bug' ? 'bug' : 'la note'}.`,

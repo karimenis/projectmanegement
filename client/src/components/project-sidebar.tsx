@@ -24,23 +24,18 @@ export default function ProjectSidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   
   useEffect(() => {
-    const loadProjects = () => {
-      const projectsData = storage.getProjects();
-      setProjects(projectsData);
+    const loadProjects = async () => {
+      try {
+        const projectsData = await storage.getProjects();
+        setProjects(projectsData);
+      } catch (error) {
+        console.error("Error loading projects:", error);
+      }
     };
 
     loadProjects();
     
-    // Set up listener for localStorage changes
-    const handleStorage = () => {
-      loadProjects();
-    };
-    
-    window.addEventListener('storage', handleStorage);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
+    // No need for localStorage listener with database approach
   }, []);
   
   // Find current user (for demo purposes)

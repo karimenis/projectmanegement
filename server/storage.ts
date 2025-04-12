@@ -93,10 +93,15 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createProject(project: InsertProject): Promise<Project> {
-    // Convert users to an array if it's not already
+    // Ensure users is an array of numbers
+    const userArray = Array.isArray(project.users) ? 
+      project.users : 
+      (project.users ? [project.users] : []);
+    
     const projectData = {
-      ...project,
-      users: Array.isArray(project.users) ? project.users : []
+      name: project.name,
+      estimation_days: project.estimation_days,
+      users: userArray
     };
     
     const result = await db.insert(projects).values(projectData).returning();
@@ -119,9 +124,13 @@ export class DatabaseStorage implements IStorage {
     // Handle users array for update
     let projectData = { ...project };
     if (project.users) {
+      const userArray = Array.isArray(project.users) ? 
+        project.users : 
+        (project.users ? [project.users] : []);
+      
       projectData = {
         ...projectData,
-        users: Array.isArray(project.users) ? project.users : []
+        users: userArray
       };
     }
     

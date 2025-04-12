@@ -61,18 +61,18 @@ export interface BugNoteFormData {
 
 // Storage utility type
 export interface StorageActions {
-  getProjects: () => Project[];
-  getUsers: () => User[];
-  getProject: (id: number) => Project | undefined;
-  createProject: (project: ProjectFormData) => Project;
-  updateProject: (id: number, project: Partial<Project>) => Project | undefined;
-  deleteProject: (id: number) => boolean;
-  createTask: (projectId: number, task: TaskFormData) => Task;
-  updateTask: (projectId: number, taskId: number, task: Partial<TaskFormData>) => Task | undefined;
-  deleteTask: (projectId: number, taskId: number) => boolean;
-  createBugNote: (projectId: number, bugNote: BugNoteFormData) => BugNote;
-  updateBugNote: (projectId: number, bugNoteId: number, bugNote: Partial<BugNoteFormData>) => BugNote | undefined;
-  deleteBugNote: (projectId: number, bugNoteId: number) => boolean;
+  getProjects: () => Promise<Project[]>;
+  getUsers: () => Promise<User[]>;
+  getProject: (id: number) => Promise<Project | undefined>;
+  createProject: (project: ProjectFormData) => Promise<Project>;
+  updateProject: (id: number, project: Partial<Project>) => Promise<Project | undefined>;
+  deleteProject: (id: number) => Promise<boolean>;
+  createTask: (projectId: number, task: TaskFormData) => Promise<Task>;
+  updateTask: (projectId: number, taskId: number, task: Partial<TaskFormData>) => Promise<Task | undefined>;
+  deleteTask: (projectId: number, taskId: number) => Promise<boolean>;
+  createBugNote: (projectId: number, bugNote: BugNoteFormData) => Promise<BugNote>;
+  updateBugNote: (projectId: number, bugNoteId: number, bugNote: Partial<BugNoteFormData>) => Promise<BugNote | undefined>;
+  deleteBugNote: (projectId: number, bugNoteId: number) => Promise<boolean>;
 }
 
 // Data for dashboard statistics

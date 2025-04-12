@@ -32,32 +32,27 @@ export default function TasksTable({ projectId }: TasksTableProps) {
   const editRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
-    const fetchData = () => {
-      const projectData = storage.getProject(projectId);
-      const usersData = storage.getUsers();
-      
-      if (projectData) {
-        setProject(projectData);
+    const fetchData = async () => {
+      try {
+        const [projectData, usersData] = await Promise.all([
+          storage.getProject(projectId),
+          storage.getUsers()
+        ]);
+        
+        if (projectData) {
+          setProject(projectData as Project);
+        }
+        
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
-      
-      setUsers(usersData);
     };
 
     fetchData();
-    
-    // Set up listener for localStorage changes
-    const handleStorage = () => {
-      fetchData();
-    };
-    
-    window.addEventListener('storage', handleStorage);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
   }, [projectId]);
 
-  const handleCreateTask = (task: {
+  const handleCreateTask = async (task: {
     date: string;
     tache: string;
     responsable: number | null;
@@ -67,13 +62,13 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     etat: 'réalisé' | 'non réalisé';
   }) => {
     try {
-      storage.createTask(projectId, task);
+      await storage.createTask(projectId, task);
       setIsTaskDialogOpen(false);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -81,6 +76,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
         description: "La tâche a été ajoutée avec succès.",
       });
     } catch (error) {
+      console.error("Error creating task:", error);
       toast({
         title: "Erreur",
         description: "Impossible de créer la tâche.",
@@ -89,7 +85,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     }
   };
 
-  const handleUpdateTask = (taskId: number, task: Partial<{
+  const handleUpdateTask = async (taskId: number, task: Partial<{
     date: string;
     tache: string;
     responsable: number | null;
@@ -99,14 +95,14 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     etat: 'réalisé' | 'non réalisé';
   }>) => {
     try {
-      storage.updateTask(projectId, taskId, task);
+      await storage.updateTask(projectId, taskId, task);
       setIsTaskDialogOpen(false);
       setEditingTaskId(null);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -114,6 +110,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
         description: "La tâche a été modifiée avec succès.",
       });
     } catch (error) {
+      console.error("Error updating task:", error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la tâche.",
@@ -122,15 +119,15 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     }
   };
 
-  const handleDeleteTask = (taskId: number) => {
+  const handleDeleteTask = async (taskId: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) {
       try {
-        storage.deleteTask(projectId, taskId);
+        await storage.deleteTask(projectId, taskId);
         
         // Refresh data
-        const updatedProject = storage.getProject(projectId);
+        const updatedProject = await storage.getProject(projectId);
         if (updatedProject) {
-          setProject(updatedProject);
+          setProject(updatedProject as Project);
         }
         
         toast({
@@ -138,6 +135,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
           description: "La tâche a été supprimée avec succès.",
         });
       } catch (error) {
+        console.error("Error deleting task:", error);
         toast({
           title: "Erreur",
           description: "Impossible de supprimer la tâche.",
@@ -169,7 +167,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
   };
   
   // Save inline edited task
-  const saveInlineEdit = () => {
+  const saveInlineEdit = async () => {
     if (!inlineEditingId) return;
     
     // Validate fields
@@ -212,12 +210,12 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     };
     
     try {
-      storage.updateTask(projectId, inlineEditingId, updatedTask);
+      await storage.updateTask(projectId, inlineEditingId, updatedTask);
       
       // Refresh data
-      const updatedProject = storage.getProject(projectId);
+      const updatedProject = await storage.getProject(projectId);
       if (updatedProject) {
-        setProject(updatedProject);
+        setProject(updatedProject as Project);
       }
       
       toast({
@@ -227,6 +225,7 @@ export default function TasksTable({ projectId }: TasksTableProps) {
       
       setInlineEditingId(null);
     } catch (error) {
+      console.error("Error updating task inline:", error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la tâche.",

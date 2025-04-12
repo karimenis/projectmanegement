@@ -1,267 +1,242 @@
 import { Project, User, Task, BugNote, StorageActions, ProjectFormData, TaskFormData, BugNoteFormData } from "@/types";
+import { apiRequest, queryClient } from "./queryClient";
 
-// LocalStorage keys
-const STORAGE_KEYS = {
-  PROJECTS: 'suivi_projets_data',
-  USERS: 'suivi_projets_users'
+// API endpoints
+const API = {
+  USERS: '/api/users',
+  PROJECTS: '/api/projects',
+  TASKS: (projectId: number) => `/api/projects/${projectId}/tasks`,
+  TASK: (projectId: number, taskId: number) => `/api/projects/${projectId}/tasks/${taskId}`,
+  BUGS_NOTES: (projectId: number) => `/api/projects/${projectId}/bugs-notes`,
+  BUG_NOTE: (projectId: number, bugNoteId: number) => `/api/projects/${projectId}/bugs-notes/${bugNoteId}`
 };
 
-// Mock users data
-const MOCK_USERS: User[] = [
-  { id: 1, name: 'Jean Dupont', role: 'Chef de Projet' },
-  { id: 2, name: 'Marie Martin', role: 'Développeur' },
-  { id: 3, name: 'Pierre Leroy', role: 'Designer' },
-  { id: 4, name: 'Sophie Bernard', role: 'Testeur' }
-];
-
-// Mock projects data for initial load
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: 1,
-    nom: 'Refonte du site web',
-    estimation_jours: 20,
-    utilisateurs: [1, 2, 3],
-    tasks: [
-      {
-        id: 101,
-        date: '2023-05-10',
-        tache: 'Maquettes UI/UX',
-        responsable: 3,
-        priorite: 'haute',
-        heures_estimees: 16,
-        heures_realisees: 18,
-        etat: 'réalisé'
-      },
-      {
-        id: 102,
-        date: '2023-05-15',
-        tache: 'Développement front-end',
-        responsable: 2,
-        priorite: 'moyenne',
-        heures_estimees: 40,
-        heures_realisees: 20,
-        etat: 'non réalisé'
-      }
-    ],
-    bugs_notes: [
-      {
-        id: 201,
-        date: '2023-05-12',
-        type: 'bug',
-        contenu: 'Problème d\'affichage sur Safari',
-        tache_id: 101
-      },
-      {
-        id: 202,
-        date: '2023-05-16',
-        type: 'note',
-        contenu: 'Revoir les animations avec le client',
-        tache_id: null
-      }
-    ]
-  },
-  {
-    id: 2,
-    nom: 'Application mobile',
-    estimation_jours: 30,
-    utilisateurs: [1, 2, 4],
-    tasks: [
-      {
-        id: 103,
-        date: '2023-06-01',
-        tache: 'Architecture technique',
-        responsable: 2,
-        priorite: 'haute',
-        heures_estimees: 24,
-        heures_realisees: 22,
-        etat: 'réalisé'
-      }
-    ],
-    bugs_notes: []
-  }
-];
-
-// Load initial mock data if not exists
-export const loadMockData = (): void => {
-  if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_USERS));
-  }
-  
-  if (!localStorage.getItem(STORAGE_KEYS.PROJECTS)) {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(MOCK_PROJECTS));
-  }
+// Convert API responses to match our types
+const convertProject = (project: any): Project => {
+  return {
+    id: project.id,
+    nom: project.name,
+    estimation_jours: project.estimation_days,
+    utilisateurs: project.users,
+    tasks: project.tasks.map((task: any) => ({
+      id: task.id,
+      date: task.date,
+      tache: task.tache,
+      responsable: task.responsable,
+      priorite: task.priorite,
+      heures_estimees: task.heures_estimees,
+      heures_realisees: task.heures_realisees,
+      etat: task.etat
+    })),
+    bugs_notes: project.bugs_notes.map((bugNote: any) => ({
+      id: bugNote.id,
+      date: bugNote.date,
+      type: bugNote.type,
+      contenu: bugNote.contenu,
+      tache_id: bugNote.tache_id
+    }))
+  };
 };
 
-// Helper function to generate unique IDs
-const generateId = (): number => {
-  return Date.now() + Math.floor(Math.random() * 1000);
+const convertToApiProject = (project: ProjectFormData) => {
+  return {
+    name: project.nom,
+    estimation_days: project.estimation_jours,
+    users: project.utilisateurs
+  };
 };
 
 // Storage actions implementation
 export const storage: StorageActions = {
-  getUsers: (): User[] => {
-    const usersData = localStorage.getItem(STORAGE_KEYS.USERS);
-    return usersData ? JSON.parse(usersData) : [];
-  },
-
-  getProjects: (): Project[] => {
-    const projectsData = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    return projectsData ? JSON.parse(projectsData) : [];
-  },
-
-  getProject: (id: number): Project | undefined => {
-    const projects = storage.getProjects();
-    return projects.find(project => project.id === id);
-  },
-
-  createProject: (projectData: ProjectFormData): Project => {
-    const projects = storage.getProjects();
-    const newProject: Project = {
-      id: generateId(),
-      nom: projectData.nom,
-      estimation_jours: projectData.estimation_jours,
-      utilisateurs: projectData.utilisateurs,
-      tasks: [],
-      bugs_notes: []
-    };
-    
-    projects.push(newProject);
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return newProject;
-  },
-
-  updateProject: (id: number, projectData: Partial<Project>): Project | undefined => {
-    const projects = storage.getProjects();
-    const index = projects.findIndex(project => project.id === id);
-    
-    if (index === -1) return undefined;
-    
-    const updatedProject = { ...projects[index], ...projectData };
-    projects[index] = updatedProject;
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return updatedProject;
-  },
-
-  deleteProject: (id: number): boolean => {
-    const projects = storage.getProjects();
-    const filteredProjects = projects.filter(project => project.id !== id);
-    
-    if (filteredProjects.length === projects.length) {
-      return false;
+  getUsers: async (): Promise<User[]> => {
+    try {
+      const response = await fetch(API.USERS);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      
+      const users = await response.json();
+      return users.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        role: user.role
+      }));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
     }
-    
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(filteredProjects));
-    return true;
   },
 
-  createTask: (projectId: number, taskData: TaskFormData): Task => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) {
-      throw new Error('Project not found');
+  getProjects: async (): Promise<Project[]> => {
+    try {
+      const response = await fetch(API.PROJECTS);
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      
+      const projects = await response.json();
+      return projects.map(convertProject);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      return [];
     }
-    
-    const newTask: Task = {
-      id: generateId(),
-      ...taskData
-    };
-    
-    projects[projectIndex].tasks.push(newTask);
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return newTask;
   },
 
-  updateTask: (projectId: number, taskId: number, taskData: Partial<TaskFormData>): Task | undefined => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) return undefined;
-    
-    const taskIndex = projects[projectIndex].tasks.findIndex(task => task.id === taskId);
-    
-    if (taskIndex === -1) return undefined;
-    
-    const updatedTask = { ...projects[projectIndex].tasks[taskIndex], ...taskData };
-    projects[projectIndex].tasks[taskIndex] = updatedTask;
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return updatedTask;
-  },
-
-  deleteTask: (projectId: number, taskId: number): boolean => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) return false;
-    
-    const originalLength = projects[projectIndex].tasks.length;
-    projects[projectIndex].tasks = projects[projectIndex].tasks.filter(task => task.id !== taskId);
-    
-    if (projects[projectIndex].tasks.length === originalLength) {
-      return false;
-    }
-    
-    // Remove task links from bugs/notes
-    projects[projectIndex].bugs_notes = projects[projectIndex].bugs_notes.map(bugNote => {
-      if (bugNote.tache_id === taskId) {
-        return { ...bugNote, tache_id: null };
+  getProject: async (id: number): Promise<Project | undefined> => {
+    try {
+      const response = await fetch(`${API.PROJECTS}/${id}`);
+      if (!response.ok) {
+        if (response.status === 404) return undefined;
+        throw new Error('Failed to fetch project');
       }
-      return bugNote;
-    });
-    
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return true;
-  },
-
-  createBugNote: (projectId: number, bugNoteData: BugNoteFormData): BugNote => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) {
-      throw new Error('Project not found');
+      
+      const project = await response.json();
+      return convertProject(project);
+    } catch (error) {
+      console.error(`Error fetching project ${id}:`, error);
+      return undefined;
     }
-    
-    const newBugNote: BugNote = {
-      id: generateId(),
-      ...bugNoteData
-    };
-    
-    projects[projectIndex].bugs_notes.push(newBugNote);
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return newBugNote;
   },
 
-  updateBugNote: (projectId: number, bugNoteId: number, bugNoteData: Partial<BugNoteFormData>): BugNote | undefined => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) return undefined;
-    
-    const bugNoteIndex = projects[projectIndex].bugs_notes.findIndex(bugNote => bugNote.id === bugNoteId);
-    
-    if (bugNoteIndex === -1) return undefined;
-    
-    const updatedBugNote = { ...projects[projectIndex].bugs_notes[bugNoteIndex], ...bugNoteData };
-    projects[projectIndex].bugs_notes[bugNoteIndex] = updatedBugNote;
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return updatedBugNote;
+  createProject: async (projectData: ProjectFormData): Promise<Project> => {
+    try {
+      const response = await apiRequest('POST', API.PROJECTS, convertToApiProject(projectData));
+      const project = await response.json();
+      
+      // Invalidate projects cache
+      queryClient.invalidateQueries({ queryKey: [API.PROJECTS] });
+      return convertProject(project);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
   },
 
-  deleteBugNote: (projectId: number, bugNoteId: number): boolean => {
-    const projects = storage.getProjects();
-    const projectIndex = projects.findIndex(project => project.id === projectId);
-    
-    if (projectIndex === -1) return false;
-    
-    const originalLength = projects[projectIndex].bugs_notes.length;
-    projects[projectIndex].bugs_notes = projects[projectIndex].bugs_notes.filter(bugNote => bugNote.id !== bugNoteId);
-    
-    if (projects[projectIndex].bugs_notes.length === originalLength) {
+  updateProject: async (id: number, projectData: Partial<Project>): Promise<Project | undefined> => {
+    try {
+      // Convert to API format
+      const apiProjectData = {
+        name: projectData.nom,
+        estimation_days: projectData.estimation_jours,
+        users: projectData.utilisateurs
+      };
+      
+      const response = await apiRequest('PUT', `${API.PROJECTS}/${id}`, apiProjectData);
+      const project = await response.json();
+      
+      // Invalidate cache for this project and projects list
+      queryClient.invalidateQueries({ queryKey: [API.PROJECTS] });
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${id}`] });
+      
+      return convertProject(project);
+    } catch (error) {
+      console.error(`Error updating project ${id}:`, error);
+      return undefined;
+    }
+  },
+
+  deleteProject: async (id: number): Promise<boolean> => {
+    try {
+      const response = await apiRequest('DELETE', `${API.PROJECTS}/${id}`);
+      
+      // Invalidate projects cache
+      queryClient.invalidateQueries({ queryKey: [API.PROJECTS] });
+      
+      return response.ok;
+    } catch (error) {
+      console.error(`Error deleting project ${id}:`, error);
       return false;
     }
-    
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-    return true;
+  },
+
+  createTask: async (projectId: number, taskData: TaskFormData): Promise<Task> => {
+    try {
+      const response = await apiRequest('POST', API.TASKS(projectId), taskData);
+      const task = await response.json();
+      
+      // Invalidate project cache to update tasks list
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.TASKS(projectId)] });
+      
+      return task;
+    } catch (error) {
+      console.error(`Error creating task for project ${projectId}:`, error);
+      throw error;
+    }
+  },
+
+  updateTask: async (projectId: number, taskId: number, taskData: Partial<TaskFormData>): Promise<Task | undefined> => {
+    try {
+      const response = await apiRequest('PUT', API.TASK(projectId, taskId), taskData);
+      const task = await response.json();
+      
+      // Invalidate project and tasks cache
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.TASKS(projectId)] });
+      
+      return task;
+    } catch (error) {
+      console.error(`Error updating task ${taskId} for project ${projectId}:`, error);
+      return undefined;
+    }
+  },
+
+  deleteTask: async (projectId: number, taskId: number): Promise<boolean> => {
+    try {
+      const response = await apiRequest('DELETE', API.TASK(projectId, taskId));
+      
+      // Invalidate project and tasks cache
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.TASKS(projectId)] });
+      
+      return response.ok;
+    } catch (error) {
+      console.error(`Error deleting task ${taskId} for project ${projectId}:`, error);
+      return false;
+    }
+  },
+
+  createBugNote: async (projectId: number, bugNoteData: BugNoteFormData): Promise<BugNote> => {
+    try {
+      const response = await apiRequest('POST', API.BUGS_NOTES(projectId), bugNoteData);
+      const bugNote = await response.json();
+      
+      // Invalidate project cache to update bugs/notes list
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.BUGS_NOTES(projectId)] });
+      
+      return bugNote;
+    } catch (error) {
+      console.error(`Error creating bug/note for project ${projectId}:`, error);
+      throw error;
+    }
+  },
+
+  updateBugNote: async (projectId: number, bugNoteId: number, bugNoteData: Partial<BugNoteFormData>): Promise<BugNote | undefined> => {
+    try {
+      const response = await apiRequest('PUT', API.BUG_NOTE(projectId, bugNoteId), bugNoteData);
+      const bugNote = await response.json();
+      
+      // Invalidate project and bugs/notes cache
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.BUGS_NOTES(projectId)] });
+      
+      return bugNote;
+    } catch (error) {
+      console.error(`Error updating bug/note ${bugNoteId} for project ${projectId}:`, error);
+      return undefined;
+    }
+  },
+
+  deleteBugNote: async (projectId: number, bugNoteId: number): Promise<boolean> => {
+    try {
+      const response = await apiRequest('DELETE', API.BUG_NOTE(projectId, bugNoteId));
+      
+      // Invalidate project and bugs/notes cache
+      queryClient.invalidateQueries({ queryKey: [`${API.PROJECTS}/${projectId}`] });
+      queryClient.invalidateQueries({ queryKey: [API.BUGS_NOTES(projectId)] });
+      
+      return response.ok;
+    } catch (error) {
+      console.error(`Error deleting bug/note ${bugNoteId} for project ${projectId}:`, error);
+      return false;
+    }
   }
 };
 
@@ -295,27 +270,28 @@ export const getProjectStatus = (project: Project): { label: string; className: 
 };
 
 // Export to CSV
-export const exportProjectDataToCsv = (project: Project, viewType: 'tasks' | 'bugs'): string => {
+export const exportProjectDataToCsv = async (project: Project, viewType: 'tasks' | 'bugs'): Promise<string> => {
   let csvContent = '';
   
   if (viewType === 'tasks' && project.tasks) {
     // Export tasks
     csvContent = 'Date,Tâche,Responsable,Priorité,Heures estimées,Heures réalisées,État\n';
     
-    project.tasks.forEach(task => {
-      const users = storage.getUsers();
+    // Get all users for responsible lookup
+    const users = await storage.getUsers();
+    
+    for (const task of project.tasks) {
       const responsible = task.responsable ? users.find(user => user.id === task.responsable)?.name || '' : '';
-      
       csvContent += `"${formatDate(task.date)}","${task.tache}","${responsible}","${task.priorite}",${task.heures_estimees},${task.heures_realisees || 0},"${task.etat}"\n`;
-    });
+    }
   } else if (viewType === 'bugs' && project.bugs_notes) {
     // Export bugs & notes
     csvContent = 'Date,Type,Contenu,Tâche liée\n';
     
-    project.bugs_notes.forEach(bug => {
+    for (const bug of project.bugs_notes) {
       const linkedTask = bug.tache_id ? project.tasks.find(task => task.id === bug.tache_id)?.tache || '' : '';
       csvContent += `"${formatDate(bug.date)}","${bug.type}","${bug.contenu}","${linkedTask}"\n`;
-    });
+    }
   }
   
   return csvContent;
