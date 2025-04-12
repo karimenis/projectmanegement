@@ -1,0 +1,170 @@
+🎯 Objectif :
+
+Je souhaite créer un outil de suivi de projets qui ressemble à Google Sheets dans son fonctionnement, mais structuré et enrichi avec des fonctionnalités de gestion de tâches, statistiques d’avancement, et tableau de bord.
+
+📁 Structure générale :
+
+1. Projets
+
+Chaque projet doit contenir les paramètres suivants :
+
+
+
+nom (string)
+
+estimation_jours (number) → estimation globale du projet en jours
+
+utilisateurs (liste de personnes assignées)
+
+2. Feuille de suivi (type tableur) par projet
+
+Comme une feuille Google Sheets, chaque ligne représente une tâche du projet, avec les colonnes suivantes :
+
+
+
+date (date de la tâche)
+
+tâche (texte libre)
+
+responsable (utilisateur assigné)
+
+priorité (choix : basse / moyenne / haute)
+
+heures_estimées (nombre)
+
+heures_réalisées (nombre)
+
+état (choix : réalisé / non réalisé)
+
+3. Feuille “Bugs & Notes”
+
+Chaque projet doit également avoir une seconde feuille (onglet), de type tableau également, pour :
+
+
+
+Lister les bugs rencontrés
+
+Ajouter des notes/commentaires
+
+Champs proposés :
+
+
+
+date
+
+type (bug / note)
+
+contenu (texte)
+
+lié à la tâche (optionnel)
+
+📊 Fonctionnalités de suivi / tableau de bord
+
+Calculs automatiques :
+
+Calcul de l’avancement du projet :
+
+avancement = total heures réalisées / (estimation_jours * 8)
+
+Affiché en % d’avancement
+
+Tableau de bord global :
+
+Une vue centrale affiche tous les projets avec :
+
+Nom du projet
+
+Estimation en jours
+
+Heures réalisées
+
+Avancement en %
+
+État global (en cours / terminé / en retard)
+
+Nombre de tâches terminées vs totales
+
+🔧 Aspects techniques recommandés :
+
+Interface type Google Sheet (modifications ligne par ligne facilement)
+
+Backend léger (ex : Supabase ou Firebase ou NestJS)
+
+Possibilité d’exporter les données (CSV ou PDF)
+
+Authentification simple (email/password ou Google)
+
+Option futur : PWA ou App mobile
+
+🧠 Ce que je veux que tu fasses :
+
+Crée-moi une base fonctionnelle de ce projet :
+
+
+
+Modèle de données (ex. en JSON ou SQL)
+
+Interface simple web (React / Vue / autre)
+
+Composants principaux (table de tâches, stats, dashboard projets)
+
+Tu peux t’appuyer sur des bibliothèques existantes pour les tableaux (comme Handsontable, React Table ou AG Grid).
+
+Explication du Code
+
+Modèle de Données (Types et Mock Data):
+User, Task, BugNote, Project: Interfaces TypeScript pour définir la structure des données.
+mockUsers: Un tableau de données utilisateur statiques pour la démonstration.
+initialProjects: Un tableau de projets statiques avec des tâches et des bugs/notes pour la démonstration.
+Composants React:
+OutilDeSuiviDeProjets: Le composant principal qui contient toute la logique et l'interface utilisateur.
+Utilisation de composants shadcn/ui pour les éléments d'interface utilisateur (boutons, tableaux, entrées, etc.).
+Utilisation de recharts pour la visualisation des données (graphique à barres).
+État Local (Hooks):
+useState est utilisé pour gérer l'état local :
+projects: La liste de tous les projets.
+selectedProjectId: L'ID du projet sélectionné pour afficher les détails.
+isCreatingProject: contrôle l'affichage de la boîte de dialogue de création de projet.
+newProjectName, newProjectEstimatedDays: stockent les valeurs du nouveau projet à créer.
+editingTaskId, editingBugNoteId: stockent les ID des tâches/bugs/notes en cours d'édition.
+newTask, newBugNote: stockent les valeurs de la nouvelle tâche/bug/note à créer.
+Fonctionnalités Principales:
+Gestion des Projets:
+Affichage de la liste des projets avec des détails de base.
+Possibilité de créer, supprimer et sélectionner des projets.
+Gestion des Tâches:
+Affichage des tâches pour le projet sélectionné.
+Possibilité de créer, modifier et supprimer des tâches.
+Champs de tâche : date, tâche, responsable, priorité, heures estimées, heures réelles, état.
+Gestion des Bugs et Notes :
+Affichage des bugs et des notes pour le projet sélectionné.
+Possibilité de créer, modifier et supprimer des bugs/notes.
+Champs Bug/Note : date, type, contenu, ID de la tâche liée.
+Tableau de Bord :
+Calcul de l'avancement du projet (en %).
+Affichage de l'état du projet (en cours, terminé, en retard).
+Vue d'ensemble de tous les projets avec l'avancement et l'état.
+Visualisation :
+Graphique à barres montrant les heures estimées et réelles pour chaque projet.
+Calculs et Logique :
+getProjectProgress: Calcule l'avancement d'un projet en fonction des heures estimées et réelles.
+getProjectStatus: Détermine l'état d'un projet en fonction de son avancement et de la date des tâches.
+getUserName: Récupère le nom d'un utilisateur à partir de son ID.
+Interface Utilisateur :
+Disposition réactive avec une grille pour les projets et les détails du projet.
+Utilisation de modales (Dialog et Sheet) pour la création et la modification de projets, de tâches et de bugs/notes.
+Tableaux pour afficher les tâches et les bugs/notes.
+Graphique à barres pour visualiser les données du projet.
+Fichiers de langue Français.
+Améliorations Potentielles :
+Persistance des données (utilisation d'une base de données comme Supabase ou Firebase).
+Authentification des utilisateurs.
+Fonctionnalités d'exportation (CSV, PDF).
+Interface utilisateur plus riche avec des fonctionnalités de tri, de filtrage et de recherche.
+Prise en charge des PWA ou des applications mobiles.
+Gestion des utilisateurs de projet et affectation des tâches.
+Suivi plus détaillé des heures de travail et des coûts.
+Diagrammes de Gantt pour la planification du projet.
+Notifications et alertes.
+Collaboration en temps réel.
+N'hésitez pas à me poser d'autres questions ou à demander des modifications.
