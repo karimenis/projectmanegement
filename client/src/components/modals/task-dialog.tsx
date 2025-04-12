@@ -40,7 +40,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task, users }: TaskDialogP
     if (task) {
       setDate(task.date);
       setTaskDescription(task.tache);
-      setUserId(task.responsable ? String(task.responsable) : '');
+      setUserId(task.responsable ? String(task.responsable) : 'null');
       setPriority(task.priorite);
       setEstimatedHours(task.heures_estimees);
       setActualHours(task.heures_realisees);

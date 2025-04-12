@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { storage, formatDate } from "@/lib/storage";
 import { User, Task, Project } from "@/types";
 import { TaskDialog } from "@/components/modals/task-dialog";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, EditIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TasksTableProps {
   projectId: number;
@@ -16,6 +18,18 @@ export default function TasksTable({ projectId }: TasksTableProps) {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const { toast } = useToast();
+  
+  // Inline editing states
+  const [inlineEditingId, setInlineEditingId] = useState<number | null>(null);
+  const [editedTaskName, setEditedTaskName] = useState<string>('');
+  const [editedResponsible, setEditedResponsible] = useState<string>('null');
+  const [editedPriority, setEditedPriority] = useState<'basse' | 'moyenne' | 'haute'>('moyenne');
+  const [editedEstimatedHours, setEditedEstimatedHours] = useState<string>('');
+  const [editedActualHours, setEditedActualHours] = useState<string>('');
+  const [editedStatus, setEditedStatus] = useState<'réalisé' | 'non réalisé'>('non réalisé');
+  
+  // Refs for handling click outside
+  const editRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
     const fetchData = () => {
@@ -137,6 +151,108 @@ export default function TasksTable({ projectId }: TasksTableProps) {
     setEditingTaskId(taskId);
     setIsTaskDialogOpen(true);
   };
+  
+  // Start inline editing of a task
+  const startInlineEdit = (task: Task) => {
+    setInlineEditingId(task.id);
+    setEditedTaskName(task.tache);
+    setEditedResponsible(task.responsable ? String(task.responsable) : 'null');
+    setEditedPriority(task.priorite);
+    setEditedEstimatedHours(String(task.heures_estimees));
+    setEditedActualHours(String(task.heures_realisees || 0));
+    setEditedStatus(task.etat);
+  };
+  
+  // Cancel inline editing
+  const cancelInlineEdit = () => {
+    setInlineEditingId(null);
+  };
+  
+  // Save inline edited task
+  const saveInlineEdit = () => {
+    if (!inlineEditingId) return;
+    
+    // Validate fields
+    if (!editedTaskName.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Le nom de la tâche ne peut pas être vide",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const estimatedHoursNum = Number(editedEstimatedHours);
+    if (isNaN(estimatedHoursNum) || estimatedHoursNum <= 0) {
+      toast({
+        title: "Erreur",
+        description: "Les heures estimées doivent être un nombre positif",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const actualHoursNum = Number(editedActualHours);
+    if (isNaN(actualHoursNum) || actualHoursNum < 0) {
+      toast({
+        title: "Erreur",
+        description: "Les heures réalisées doivent être un nombre positif ou zéro",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const updatedTask = {
+      tache: editedTaskName,
+      responsable: editedResponsible === 'null' ? null : Number(editedResponsible),
+      priorite: editedPriority,
+      heures_estimees: estimatedHoursNum,
+      heures_realisees: actualHoursNum,
+      etat: editedStatus
+    };
+    
+    try {
+      storage.updateTask(projectId, inlineEditingId, updatedTask);
+      
+      // Refresh data
+      const updatedProject = storage.getProject(projectId);
+      if (updatedProject) {
+        setProject(updatedProject);
+      }
+      
+      toast({
+        title: "Tâche mise à jour",
+        description: "La tâche a été modifiée avec succès.",
+      });
+      
+      setInlineEditingId(null);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la tâche.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // For handling clicks outside the editing row
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        inlineEditingId && 
+        editRowRef.current && 
+        !editRowRef.current.contains(event.target as Node)
+      ) {
+        cancelInlineEdit();
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [inlineEditingId]);
 
   if (!project) {
     return (

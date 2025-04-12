@@ -35,7 +35,7 @@ export function BugNoteDialog({ isOpen, onClose, onSave, bugNote, tasks }: BugNo
       setDate(bugNote.date);
       setType(bugNote.type);
       setContent(bugNote.contenu);
-      setTaskId(bugNote.tache_id ? String(bugNote.tache_id) : '');
+      setTaskId(bugNote.tache_id ? String(bugNote.tache_id) : 'null');
     } else {
       resetForm();
     }
@@ -70,7 +70,7 @@ export function BugNoteDialog({ isOpen, onClose, onSave, bugNote, tasks }: BugNo
     setDate(new Date().toISOString().split('T')[0]);
     setType('bug');
     setContent('');
-    setTaskId('');
+    setTaskId("null");
     setErrors({ date: false, content: false });
   };
 
