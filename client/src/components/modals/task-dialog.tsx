@@ -25,7 +25,7 @@ interface TaskDialogProps {
 export function TaskDialog({ isOpen, onClose, onSave, task, users }: TaskDialogProps) {
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [taskDescription, setTaskDescription] = useState('');
-  const [userId, setUserId] = useState<string>('');
+  const [userId, setUserId] = useState<string>("null");
   const [priority, setPriority] = useState<'basse' | 'moyenne' | 'haute'>('moyenne');
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
   const [actualHours, setActualHours] = useState<number | ''>('');
@@ -68,7 +68,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task, users }: TaskDialogP
     onSave({
       date,
       tache: taskDescription,
-      responsable: userId ? Number(userId) : null,
+      responsable: userId === "null" ? null : Number(userId),
       priorite: priority,
       heures_estimees: estimatedHours as number,
       heures_realisees: typeof actualHours === 'number' ? actualHours : 0,
@@ -83,7 +83,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task, users }: TaskDialogP
   const resetForm = () => {
     setDate(new Date().toISOString().split('T')[0]);
     setTaskDescription('');
-    setUserId('');
+    setUserId("null");
     setPriority('moyenne');
     setEstimatedHours('');
     setActualHours('');
@@ -142,7 +142,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task, users }: TaskDialogP
                 <SelectValue placeholder="Sélectionner un responsable" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun responsable</SelectItem>
+                <SelectItem value="null">Aucun responsable</SelectItem>
                 {users.map(user => (
                   <SelectItem key={user.id} value={String(user.id)}>
                     {user.name} ({user.role})

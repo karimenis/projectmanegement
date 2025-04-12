@@ -24,7 +24,7 @@ export function BugNoteDialog({ isOpen, onClose, onSave, bugNote, tasks }: BugNo
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<'bug' | 'note'>('bug');
   const [content, setContent] = useState('');
-  const [taskId, setTaskId] = useState<string>('');
+  const [taskId, setTaskId] = useState<string>("null");
   const [errors, setErrors] = useState({
     date: false,
     content: false
@@ -58,7 +58,7 @@ export function BugNoteDialog({ isOpen, onClose, onSave, bugNote, tasks }: BugNo
       date,
       type,
       contenu: content,
-      tache_id: taskId ? Number(taskId) : null
+      tache_id: taskId === "null" ? null : Number(taskId)
     });
     
     if (!bugNote) {
@@ -139,7 +139,7 @@ export function BugNoteDialog({ isOpen, onClose, onSave, bugNote, tasks }: BugNo
                 <SelectValue placeholder="Aucune tâche" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucune tâche</SelectItem>
+                <SelectItem value="null">Aucune tâche</SelectItem>
                 {tasks.map(task => (
                   <SelectItem key={task.id} value={String(task.id)}>
                     {task.tache}
